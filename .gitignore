@@ -21,3 +21,7 @@ third_party/
 *.cache
 wandb/
 
+
+# 允许提交模型权重
+!checkpoints/
+!checkpoints/**
