@@ -90,6 +90,21 @@ def table(doc, headers, rows, widths=None):
     t = doc.add_table(rows=1+len(rows), cols=len(headers))
     t.style = 'Table Grid'
     t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    # 关闭首行条件格式，防止样式覆盖单元格背景
+    tblPr = t._tbl.find(qn('w:tblPr'))
+    if tblPr is None:
+        tblPr = OxmlElement('w:tblPr')
+        t._tbl.insert(0, tblPr)
+    for old in tblPr.findall(qn('w:tblLook')):
+        tblPr.remove(old)
+    tblLook = OxmlElement('w:tblLook')
+    tblLook.set(qn('w:firstRow'), '0')
+    tblLook.set(qn('w:lastRow'), '0')
+    tblLook.set(qn('w:firstColumn'), '0')
+    tblLook.set(qn('w:lastColumn'), '0')
+    tblLook.set(qn('w:noHBand'), '1')
+    tblLook.set(qn('w:noVBand'), '1')
+    tblPr.append(tblLook)
     hrow = t.rows[0]
     for i, h in enumerate(headers):
         c = hrow.cells[i]
@@ -100,9 +115,13 @@ def table(doc, headers, rows, widths=None):
         set_cjk(r, zh="黑体", en="Arial")
         c.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
         tcp = c._tc.get_or_add_tcPr()
+        for old_shd in tcp.findall(qn('w:shd')):
+            tcp.remove(old_shd)
         shd = OxmlElement('w:shd')
-        shd.set(qn('w:val'),'clear'); shd.set(qn('w:color'),'auto')
-        shd.set(qn('w:fill'),'FFFFFF'); tcp.append(shd)
+        shd.set(qn('w:val'), 'clear')
+        shd.set(qn('w:color'), 'auto')
+        shd.set(qn('w:fill'), 'auto')
+        tcp.append(shd)
     for ri, row in enumerate(rows):
         tr = t.rows[ri+1]
         for ci, val in enumerate(row):
