@@ -232,7 +232,7 @@ def exp1():
     # 1. 封面
     cover(prs,
           "实验一：手写数字识别",
-          "基于卷积神经网络（CNN）的 MNIST 分类 | PyTorch")
+          "基于卷积神经网络（CNN）的 MNIST 分类")
 
     # 2. 概述
     content_page(prs, "概述", [
@@ -377,7 +377,7 @@ def exp2():
 
     cover(prs,
           "实验二：基于 ViT 的 CIFAR10 图像分类",
-          "Vision Transformer 从零实现 | PyTorch")
+          "Vision Transformer 从零实现")
 
     # 2. 概述
     content_page(prs, "概述", [
@@ -518,7 +518,7 @@ def exp3():
 
     cover(prs,
           "实验三：自动写诗",
-          "基于双层 LSTM 的唐诗语言模型 | PyTorch")
+          "基于双层 LSTM 的唐诗语言模型")
 
     # 2. 概述
     content_page(prs, "概述", [
@@ -666,7 +666,7 @@ def exp4():
 
     cover(prs,
           "实验四：基于 Transformer 的神经机器翻译",
-          "中英 Encoder-Decoder NMT  |  BLEU-4 = 14.93 ✅  |  PyTorch")
+          "中英 Encoder-Decoder NMT  |  BLEU-4 = 14.93 ✅")
 
     # 2. 概述
     content_page(prs, "概述", [
