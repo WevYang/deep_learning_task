@@ -102,7 +102,7 @@ def table(doc, headers, rows, widths=None):
         tcp = c._tc.get_or_add_tcPr()
         shd = OxmlElement('w:shd')
         shd.set(qn('w:val'),'clear'); shd.set(qn('w:color'),'auto')
-        shd.set(qn('w:fill'),'D9E2F3'); tcp.append(shd)
+        shd.set(qn('w:fill'),'FFFFFF'); tcp.append(shd)
     for ri, row in enumerate(rows):
         tr = t.rows[ri+1]
         for ci, val in enumerate(row):
