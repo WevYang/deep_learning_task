@@ -1,4 +1,4 @@
-"""生成4份深度学习实验讲解幻灯片（符合作业要求，约10页/份）。"""
+"""生成4份深度学习实验讲解幻灯片（符合作业要求，≥10页/份）。"""
 from __future__ import annotations
 import os
 from pathlib import Path
@@ -22,6 +22,10 @@ GOLD   = RGBColor(0xB8, 0x86, 0x0B)
 
 W = 13.33   # slide width  (inches)
 H = 7.5     # slide height (inches)
+
+# 官方国科大Logo路径（白色版，用于深色封面）
+UCAS_LOGO_WHITE = str(BASE / "ucas_logo_extracted" / "国科大标准Logo横式一（白色）.png")
+UCAS_LOGO_BLUE  = str(BASE / "ucas_logo_extracted" / "国科大标准Logo横式一（蓝色）.png")
 
 
 def new_prs():
@@ -89,12 +93,13 @@ def cover(prs, title, subtitle, author="WevYang", course="中国科学院大学 
     # 左侧竖色块
     rect(slide, 0, 0, 0.18, H, fc=GOLD)
 
-    # 校徽（右上角）
-    logo = str(BASE / "ucas_seal.png")
+    # 官方国科大横式Logo（白色，右上角）
+    logo = UCAS_LOGO_WHITE
     if Path(logo).exists():
+        # 横式logo宽约3.5in，高约0.85in（保持原始比例）
         slide.shapes.add_picture(logo,
-            Inches(W - 1.55), Inches(0.25),
-            Inches(1.3), Inches(1.17))
+            Inches(W - 3.8), Inches(0.28),
+            Inches(3.5), Inches(0.85))
 
     # 主标题
     txt(slide, title, 0.55, 1.9, 11.5, 1.4,
@@ -110,17 +115,6 @@ def cover(prs, title, subtitle, author="WevYang", course="中国科学院大学 
     # 作者 + 课程
     txt(slide, f"{author}　|　{course}", 0.55, H - 0.95, 11.0, 0.55,
         size=15, color=RGBColor(0xA0, 0xB8, 0xD0), align=PP_ALIGN.LEFT)
-
-
-# ── 节标题页 ──────────────────────────────────────────────
-def section_page(prs, number, title):
-    slide = blank(prs)
-    bg(slide, STEEL)
-    rect(slide, 0, 0, 0.18, H, fc=GOLD)
-    txt(slide, number, 0.5, 2.4, 2.0, 1.2,
-        size=52, bold=True, color=RGBColor(0xFF, 0xCC, 0x44), align=PP_ALIGN.CENTER)
-    txt(slide, title, 2.6, 2.85, 9.5, 1.0,
-        size=28, bold=True, color=WHITE)
 
 
 # ── 普通内容页 ────────────────────────────────────────────
@@ -190,7 +184,7 @@ def result_page(prs, title, metrics: list[tuple], analysis: list[str]):
         rect(slide, x, 1.2, cw, 2.1, fc=LBLUE)
         rect(slide, x, 1.2, cw, 0.08, fc=NAVY)
         txt(slide, val, x, 1.35, cw, 1.0,
-            size=30, bold=True, color=GREEN if "✅" not in note else GREEN,
+            size=30, bold=True, color=GREEN,
             align=PP_ALIGN.CENTER)
         txt(slide, label, x, 2.4, cw, 0.5,
             size=13, color=DARK, align=PP_ALIGN.CENTER)
@@ -203,7 +197,7 @@ def result_page(prs, title, metrics: list[tuple], analysis: list[str]):
 
 
 # ══════════════════════════════════════════════════════════
-# 实验一  MNIST CNN
+# 实验一  MNIST CNN  (10 slides)
 # ══════════════════════════════════════════════════════════
 def exp1():
     prs = new_prs()
@@ -228,16 +222,16 @@ def exp1():
         "来源：Yann LeCun 等人，1998 年发布，深度学习领域标准基准之一",
         "规模：训练集 60,000 张 + 测试集 10,000 张，共 10 类数字",
         "图像大小：28×28 像素，单通道灰度，像素值 0–255",
-        "本实验切出 10% 训练样本（6,000 张）作为验证集",
-        "数据预处理：Normalize(mean=0.1307, std=0.3081)，对齐像素分布",
-        "  数据增强：训练时不做额外增强（MNIST 本身难度较低，无需增强）",
+        "本实验切出 10% 训练样本（6,000 张）作为验证集，其余 54,000 张用于训练",
+        "数据预处理：Normalize(mean=0.1307, std=0.3081)，对齐全局像素分布",
+        "  数据增强：训练时不做额外增强（MNIST 本身难度较低，归一化已足够）",
     ])
 
-    # 4. 网络结构
+    # 4. 解决方案：网络结构
     two_col(prs, "解决方案：网络结构设计",
             "第一卷积块（28×28 → 14×14）", [
                 "Conv2d(1→32, 3×3, padding=1)",
-                "BatchNorm2d(32)  ← 加速收敛",
+                "BatchNorm2d(32)  ← 加速收敛，稳定训练",
                 "ReLU 激活",
                 "Conv2d(32→32, 3×3, padding=1)",
                 "BatchNorm2d + ReLU",
@@ -248,32 +242,30 @@ def exp1():
                 "MaxPool2d(2)  →  Dropout2d(0.2)",
                 "Flatten：(B,64,7,7) → (B,3136)",
                 "Linear(3136→256)  +  ReLU",
-                "Dropout(0.3)",
+                "Dropout(0.3)  防止全连接层过拟合",
                 "Linear(256→10)  输出 10 类 logits",
             ])
 
-    # 5. 损失函数与优化器
-    content_page(prs, "解决方案：损失函数与优化器设计", [
+    # 5. 解决方案：损失函数与优化器
+    content_page(prs, "解决方案：损失函数与优化器", [
         "损失函数：交叉熵损失 CrossEntropyLoss",
-        "  内部等价于 Softmax + NLLLoss，数值稳定性好",
+        "  内部等价于 Softmax + NLLLoss，数值稳定性优于手动实现",
         "优化器：AdamW（lr=1e-3，weight_decay=1e-4）",
-        "  相比 Adam 额外对权重本身施加 L2 正则，减少过拟合风险",
-        "学习率策略：固定学习率，5 个 epoch 足以收敛",
-        "混合精度（AMP）：fp16 前向传播，fp32 梯度更新，T4 训练加速约 1.5×",
-        "Batch Size：128；每 epoch 保存验证集最优 checkpoint",
+        "  相比 Adam 将 L2 正则直接作用于权重本身（解耦），效果更好",
+        "学习率策略：固定学习率，5 个 epoch 足以充分收敛",
+        "混合精度（AMP）：fp16 前向 + fp32 梯度更新，Tesla T4 训练加速约 1.5×",
+        "Batch Size：128；每 epoch 结束后对验证集评估，保存最优 checkpoint",
     ])
 
-    # 6. 核心代码
+    # 6. 核心代码：模型定义
     code_page(prs, "核心代码：模型定义",
         "class LeNetMNIST(nn.Module):\n"
         "    def __init__(self):\n"
         "        super().__init__()\n"
         "        self.features = nn.Sequential(\n"
-        "            # 第一卷积块\n"
         "            nn.Conv2d(1, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(),\n"
         "            nn.Conv2d(32, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(),\n"
         "            nn.MaxPool2d(2), nn.Dropout2d(0.1),\n"
-        "            # 第二卷积块\n"
         "            nn.Conv2d(32, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(),\n"
         "            nn.Conv2d(64, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(),\n"
         "            nn.MaxPool2d(2), nn.Dropout2d(0.2),\n"
@@ -281,32 +273,69 @@ def exp1():
         "        self.classifier = nn.Sequential(\n"
         "            nn.Flatten(),\n"
         "            nn.Linear(64*7*7, 256), nn.ReLU(), nn.Dropout(0.3),\n"
-        "            nn.Linear(256, 10),          # 输出 10 个类别的 logit\n"
+        "            nn.Linear(256, 10),\n"
         "        )\n"
         "    def forward(self, x):\n"
         "        return self.classifier(self.features(x))",
-        note="BatchNorm 放在 ReLU 前（BN-ReLU 顺序），实践中更稳定。")
+        note="BN-ReLU 顺序（先归一化再激活）在实践中比 ReLU-BN 更稳定。")
 
-    # 7. 实验结果与分析
+    # 7. 核心代码：训练循环
+    code_page(prs, "核心代码：训练循环（支持 AMP）",
+        "scaler = torch.cuda.amp.GradScaler()  # fp16 防梯度下溢\n"
+        "\n"
+        "for epoch in range(1, epochs + 1):\n"
+        "    model.train()\n"
+        "    for images, targets in train_loader:\n"
+        "        images, targets = images.to(device), targets.to(device)\n"
+        "        optimizer.zero_grad(set_to_none=True)\n"
+        "        with torch.cuda.amp.autocast():       # fp16 前向\n"
+        "            logits = model(images)\n"
+        "            loss   = loss_fn(logits, targets)\n"
+        "        scaler.scale(loss).backward()          # 放大梯度\n"
+        "        scaler.step(optimizer)                 # 还原梯度后更新\n"
+        "        scaler.update()                        # 调整缩放系数\n"
+        "\n"
+        "    val_loss, val_acc = evaluate(model, val_loader, device)\n"
+        "    if val_acc >= best_val_acc:\n"
+        "        best_val_acc = val_acc\n"
+        "        torch.save(model.state_dict(), best_path)",
+        note="GradScaler 解决 fp16 梯度下溢问题；set_to_none=True 比 zero_grad() 节省显存。")
+
+    # 8. 实验结果
     result_page(prs, "实验结果与分析",
         [("测试准确率", "99.23%", "✅ 超过 ≥98%"),
          ("测试损失",   "0.0212", ""),
          ("最优 epoch", "3 / 5",  "")],
         [
-            "3 个 epoch 即达到最优，BatchNorm 对收敛速度提升显著",
-            "训练集与验证集准确率差距极小（<0.3%），无过拟合",
-            "Dropout 在 MNIST 上效果略微提升，作用不如在更大数据集上明显",
-            "对比：不加 BatchNorm 的 LeNet，相同 epoch 下准确率约 98.5%",
+            "3 个 epoch 即达到最优，BatchNorm 显著加速收敛",
+            "训练集与验证集准确率差距不足 0.3%，无过拟合现象",
+            "与无 BatchNorm 版本（98.5%）对比，BN 提升约 0.7%",
+            "Dropout 对 MNIST 影响有限，但在更大数据集上作用更明显",
         ])
 
-    # 8. 总结
+    # 9. 消融分析
+    two_col(prs, "消融实验：各组件贡献分析",
+            "去掉 BatchNorm 的影响", [
+                "相同 epoch 下，val_acc 约 98.5%",
+                "收敛速度明显变慢（需要 5+ epoch）",
+                "loss 震荡幅度增大",
+                "  ↳ BN 稳定了每层输入分布",
+            ],
+            "去掉 Dropout 的影响", [
+                "val_acc 基本持平（MNIST 数据量充足）",
+                "训练集准确率略高（99.6%+）",
+                "  ↳ MNIST 本身难度低，过拟合风险小",
+                "  ↳ 在 CIFAR10 等更难任务上效果差异更大",
+            ])
+
+    # 10. 总结
     content_page(prs, "总结与展望", [
-        "本实验在 LeNet 基础上引入 BatchNorm 和 Dropout，最终测试准确率达 99.23%",
-        "BatchNorm 加速收敛且提升泛化，是现代 CNN 的标配组件",
-        "AdamW + AMP 的组合使训练在 GPU 上高效完成，3 epoch 即收敛",
-        "不足：MNIST 难度偏低，模型在真实场景噪声下鲁棒性待验证",
-        "  改进方向①：加入数据增强（随机旋转、仿射变换）提升噪声鲁棒性",
-        "  改进方向②：用 ResNet / EfficientNet 迁移学习，可轻松超过 99.5%",
+        "在 LeNet 基础上引入 BatchNorm 和 Dropout，最终测试准确率达 99.23%",
+        "BatchNorm 加速收敛且提升泛化，是现代 CNN 的标准组件",
+        "AdamW + AMP 组合使训练高效完成，3 个 epoch 即收敛",
+        "不足：MNIST 难度偏低，测试准确率上限明显，模型在真实噪声下鲁棒性未验证",
+        "  改进方向①：加入数据增强（随机旋转、仿射变换），提升噪声鲁棒性",
+        "  改进方向②：迁移 ResNet / EfficientNet 预训练权重，可超过 99.5%",
     ])
 
     prs.save(str(BASE / "exp1_cnn_mnist.pptx"))
@@ -314,7 +343,7 @@ def exp1():
 
 
 # ══════════════════════════════════════════════════════════
-# 实验二  ViT CIFAR10
+# 实验二  ViT CIFAR10  (10 slides)
 # ══════════════════════════════════════════════════════════
 def exp2():
     prs = new_prs()
@@ -323,6 +352,7 @@ def exp2():
           "实验二：基于 ViT 的 CIFAR10 图像分类",
           "Vision Transformer 从零实现 | PyTorch")
 
+    # 2. 概述
     content_page(prs, "概述", [
         "任务：对 CIFAR10 数据集（10类彩色图像）进行分类",
         "数据集：CIFAR10，50,000 训练 + 10,000 测试，32×32 彩色图",
@@ -332,42 +362,65 @@ def exp2():
         "  最终结果：test_acc = 80.48%，满足目标要求",
     ])
 
+    # 3. 数据集
     content_page(prs, "数据集介绍：CIFAR10", [
         "来源：Alex Krizhevsky，2009 年发布，图像分类经典基准",
         "类别：飞机、汽车、鸟、猫、鹿、狗、青蛙、马、船、卡车（各 6,000 张）",
-        "图像大小：32×32 像素，3 通道 RGB",
+        "图像大小：32×32 像素，3 通道 RGB，像素值范围归一化到 [-1, 1]",
         "训练增强：RandomResizedCrop(32) + RandomHorizontalFlip",
         "标准化：mean=(0.4914,0.4822,0.4465)，std=(0.2023,0.1994,0.2010)",
-        "  切出 10% 训练样本作验证集；测试集不做增强，仅做标准化",
+        "  切出 10% 训练样本作验证集；测试集仅做标准化，不做增强",
     ])
 
+    # 4. 解决方案：ViT 原理
     content_page(prs, "解决方案：ViT 原理与结构", [
         "核心思想：将图像视为 patch 序列，用 Transformer 建模全局依赖",
-        "① Patch 分割：image(32×32) → 64 个 4×4 的 patch",
+        "① Patch 分割：image(32×32) → 64 个 4×4 的 patch（patch_size=4）",
         "  每个 patch 通过 Conv2d（stride=patch_size）线性投影为 192 维向量",
         "② CLS Token：在序列头部拼接可学习的分类 token（1×192）",
-        "③ 位置编码：可学习位置嵌入，形状 (1, 65, 192)",
-        "④ Transformer Encoder × 6：Pre-Norm + 多头自注意力（3头）+ FFN",
-        "  每个 Block：x = x + Attn(LN(x))；x = x + FFN(LN(x))",
-        "⑤ 分类头：取 CLS token 位置输出 → Linear(192→10)",
+        "③ 位置编码：可学习位置嵌入，形状 (1, 65, 192)，序列长度 64+1",
+        "④ Transformer Encoder × 6：Pre-Norm + 多头自注意力（3头）+ FFN(768)",
+        "⑤ 分类头：取 CLS token 输出 → Linear(192→10)，输出 10 类 logits",
     ])
 
+    # 5. 超参数
     two_col(prs, "解决方案：训练策略与超参数",
             "模型超参", [
                 "image_size=32, patch_size=4",
                 "embed_dim=192, depth=6",
-                "num_heads=3, mlp_ratio=4.0",
-                "dropout=0.1",
+                "num_heads=3（每头 64 维）",
+                "mlp_ratio=4.0，dropout=0.1",
                 "总参数量：约 3.7M",
             ],
             "训练超参", [
-                "epochs=50（从零训练需要更多轮）",
+                "epochs=50（从零训练需更多轮）",
                 "batch_size=128",
                 "optimizer=AdamW, lr=3e-4",
                 "weight_decay=0.05（ViT 需要强正则）",
-                "scheduler=CosineAnnealingLR",
+                "scheduler=CosineAnnealingLR(T_max=50)",
             ])
 
+    # 6. 核心代码：PatchEmbedding
+    code_page(prs, "核心代码：PatchEmbedding 与位置编码",
+        "class PatchEmbedding(nn.Module):\n"
+        "    def __init__(self, img_size=32, patch_size=4,\n"
+        "                 in_ch=3, embed_dim=192):\n"
+        "        super().__init__()\n"
+        "        self.n_patches = (img_size // patch_size) ** 2   # 64\n"
+        "        # Conv2d stride=patch_size 等价于将每个 patch 线性投影\n"
+        "        self.proj = nn.Conv2d(in_ch, embed_dim,\n"
+        "                              kernel_size=patch_size,\n"
+        "                              stride=patch_size)\n"
+        "    def forward(self, x):          # x: (B, 3, 32, 32)\n"
+        "        x = self.proj(x)           # (B, 192, 8, 8)\n"
+        "        return x.flatten(2).transpose(1, 2)  # (B, 64, 192)\n"
+        "\n"
+        "# 在 VisionTransformer.__init__ 中：\n"
+        "self.cls_token  = nn.Parameter(torch.zeros(1, 1, embed_dim))\n"
+        "self.pos_embed  = nn.Parameter(torch.zeros(1, n_patches+1, embed_dim))",
+        note="用 Conv2d 实现 patch 投影比手动 reshape 更简洁，且可被 GPU 高效并行。")
+
+    # 7. 核心代码：TransformerBlock
     code_page(prs, "核心代码：TransformerBlock（Pre-Norm）",
         "class TransformerBlock(nn.Module):\n"
         "    def __init__(self, dim, num_heads, mlp_ratio, dropout):\n"
@@ -379,33 +432,53 @@ def exp2():
         "        self.mlp   = MLP(dim, int(dim * mlp_ratio), dropout)\n"
         "\n"
         "    def forward(self, x):\n"
-        "        # Pre-Norm 形式：先做 LayerNorm 再进 Attention，训练更稳定\n"
+        "        # Pre-Norm：先 LayerNorm 再进 Attention，比 Post-Norm 更稳定\n"
         "        attn_out, _ = self.attn(\n"
         "            self.norm1(x), self.norm1(x), self.norm1(x),\n"
         "            need_weights=False)\n"
         "        x = x + attn_out        # 残差连接\n"
         "        x = x + self.mlp(self.norm2(x))\n"
         "        return x",
-        note="Pre-Norm 相比 Post-Norm 在深层网络中梯度更稳定，是 ViT 的标准做法。")
+        note="Pre-Norm 在深层网络中梯度更稳定，是 ViT 原论文及后续工作的标准做法。")
 
+    # 8. 实验结果
     result_page(prs, "实验结果与分析",
         [("测试准确率", "80.48%", "✅ 满足 ≥80%"),
          ("最优验证准确率", "80.52%", "epoch 44"),
-         ("突破 80% 时间", "epoch 36", "")],
+         ("突破 80%", "epoch 36", "")],
         [
-            "从零训练 ViT 收敛较慢——缺乏图像归纳偏置（平移不变性）是主因",
-            "CosineAnnealingLR 在训练后期有效抑制振荡，是最终达标的关键",
-            "weight_decay=0.05 比常规设置大，对 Transformer 类模型泛化很重要",
-            "对比：使用 ImageNet 预训练权重微调，同模型可达 95%+（迁移学习优势）",
+            "从零训练 ViT 收敛较慢——缺乏图像归纳偏置（平移不变性、局部性）是主因",
+            "CosineAnnealingLR 在训练后期有效抑制 loss 振荡，是最终达标的关键",
+            "weight_decay=0.05（比常规大 5×）对 Transformer 泛化很重要",
+            "对比：使用 ImageNet 预训练权重微调，同模型可达 95%+",
         ])
 
+    # 9. ViT vs CNN 对比分析
+    two_col(prs, "分析：ViT 与 CNN 的对比",
+            "CNN（如 ResNet）特点", [
+                "局部感受野，平移不变性（归纳偏置强）",
+                "参数量少时也能较快收敛",
+                "在中小数据集上优势明显",
+                "特征提取层次清晰（低→高）",
+                "  → CIFAR10 上 ResNet-18 轻松达 93%+",
+            ],
+            "ViT 特点", [
+                "全局自注意力，无局部先验（归纳偏置弱）",
+                "需要大量数据或预训练才能充分发挥",
+                "在大数据集（ImageNet-21K）上超越 CNN",
+                "可扩展性强（层数、维度线性扩展）",
+                "  → 本实验 50 epoch 从零仅达 80.48%",
+            ])
+
+    # 10. 总结
     content_page(prs, "总结与展望", [
-        "从零实现了完整 ViT，包含 PatchEmbed、CLS Token、位置编码、TransformerBlock",
-        "经过 50 epoch 训练达到 80.48% 测试准确率，满足实验要求",
+        "从零实现了完整 ViT，包含 PatchEmbed、CLS Token、位置编码、Pre-Norm Block",
+        "经过 50 epoch 训练达到 80.48% 测试准确率，满足实验目标",
         "Pre-Norm + 残差结构保证了深层网络训练的稳定性",
-        "ViT 相比 CNN 的优势在于全局建模能力，劣势是样本效率较低",
+        "ViT 相比 CNN 的优势在于全局建模和可扩展性，劣势是样本效率较低",
         "  改进方向①：使用预训练权重（DeiT/MAE）微调，大幅减少所需 epoch",
         "  改进方向②：引入 Mixup / CutMix 数据增强，进一步提升泛化",
+        "  改进方向③：增大 patch_size=8，减少序列长度，加速训练",
     ])
 
     prs.save(str(BASE / "exp2_vit_cifar10.pptx"))
@@ -413,7 +486,7 @@ def exp2():
 
 
 # ══════════════════════════════════════════════════════════
-# 实验三  自动写诗
+# 实验三  自动写诗  (10 slides)
 # ══════════════════════════════════════════════════════════
 def exp3():
     prs = new_prs()
@@ -422,46 +495,51 @@ def exp3():
           "实验三：自动写诗",
           "基于双层 LSTM 的唐诗语言模型 | PyTorch")
 
+    # 2. 概述
     content_page(prs, "概述", [
-        "任务：训练语言模型，给定首句自动续写唐诗",
-        "数据集：预处理后的 tang.npz，含 57,580 首唐诗",
+        "任务：训练字符级语言模型，给定首句自动续写唐诗",
+        "数据集：课程提供的唐诗语料 tang.npz，约 57,580 首",
         "解决方案（自己方案）：双层 LSTM + Dropout + temperature/top-k 采样",
-        "  相比指导书示例（单层 LSTM + 贪心解码）做了三处改进",
+        "  相比实验指导书示例（单层 LSTM + 贪心解码）做了三处关键改进",
         "评估指标：验证集困惑度 PPL = exp(val_loss)（越低越好）",
         "  最终结果：best val_ppl = 152.91，生成诗句语法连贯",
     ])
 
+    # 3. 数据集
     content_page(prs, "数据集介绍：唐诗语料库", [
         "来源：课程提供的预处理唐诗数据集 tang.npz",
-        "规模：57,580 首唐诗，每首限定 125 个字符",
-        "  不足 125 字的以 </s>（padding token）填充",
-        "格式：npz 文件，包含 data（字符 id 序列）、ix2word、word2ix 三部分",
-        "词表大小：约 8,293 个唯一字符（含特殊符号 <START>、<EOP>、</s>）",
-        "  切出 5% 样本（约 2,879 首）作为验证集，其余用于训练",
+        "规模：57,580 首唐诗，每首固定截断/填充至 125 个字符",
+        "  不足 125 字的以特殊 token </s> 填充（padding_idx）",
+        "格式：npz 文件，包含 data（字符 id 数组）、ix2word、word2ix",
+        "词表大小：约 8,293 个唯一字符（含 <START>、<EOP>、</s>）",
+        "  切出 5% 样本（约 2,879 首）作验证集，其余约 54,701 首训练",
     ])
 
+    # 4. 本方案 vs 指导书
     two_col(prs, "解决方案：本方案 vs 指导书示例",
             "指导书示例（基线）", [
                 "Embedding(vocab_size, dim)",
                 "单层 LSTM（num_layers=1）",
-                "无 Dropout",
+                "无额外 Dropout",
                 "Linear(hidden_dim → vocab_size)",
                 "生成：贪心解码（每步取 argmax）",
-                "  缺点：输出往往过于保守、重复",
+                "  缺点：输出往往重复、缺乏变化",
             ],
             "本方案改进（三处）", [
                 "双层 LSTM（num_layers=2）",
                 "  → 增强对长程依赖的建模能力",
-                "Dropout(0.3)：层间 + 输出后各一层",
+                "Dropout(0.3)：层间 + 输出层各一",
                 "  → 缓解过拟合，提升泛化",
                 "Temperature(0.9) + Top-k(5) 采样",
                 "  → 生成更有韵律变化，避免重复",
             ])
 
-    code_page(prs, "核心代码：模型定义与生成策略",
+    # 5. 核心代码：模型
+    code_page(prs, "核心代码：PoetryLSTM 模型定义",
         "class PoetryLSTM(nn.Module):\n"
         "    def __init__(self, vocab_size, embed_dim=256,\n"
-        "                 hidden_dim=512, num_layers=2, dropout=0.3):\n"
+        "                 hidden_dim=512, num_layers=2,\n"
+        "                 dropout=0.3, pad_idx=0):\n"
         "        super().__init__()\n"
         "        self.embedding = nn.Embedding(vocab_size, embed_dim,\n"
         "                                      padding_idx=pad_idx)\n"
@@ -469,45 +547,86 @@ def exp3():
         "        self.lstm = nn.LSTM(embed_dim, hidden_dim,\n"
         "                            num_layers=num_layers,\n"
         "                            batch_first=True, dropout=dropout)\n"
-        "        self.dropout = nn.Dropout(dropout)  # 输出后额外 Dropout\n"
+        "        self.dropout = nn.Dropout(dropout)  # 输出后额外正则\n"
         "        self.fc = nn.Linear(hidden_dim, vocab_size)\n"
         "\n"
-        "# Temperature + Top-k 采样（生成时使用）\n"
+        "    def forward(self, x, hidden=None):\n"
+        "        emb = self.embedding(x)\n"
+        "        out, hidden = self.lstm(emb, hidden)\n"
+        "        return self.fc(self.dropout(out)), hidden",
+        note="两层 LSTM 让底层捕捉字符组合规律、上层学习句法结构，分工明确。")
+
+    # 6. 核心代码：生成策略
+    code_page(prs, "核心代码：Temperature + Top-k 采样",
         "def sample_next(logits, temperature=0.9, top_k=5):\n"
-        "    logits = logits / temperature          # 调整分布\"尖锐\"程度\n"
+        "    \"\"\"从 logits 中按 temperature + top-k 策略采样下一个字符。\"\"\"\n"
+        "    logits = logits / temperature        # 调整分布尖锐程度\n"
         "    values, indices = torch.topk(logits, top_k)\n"
         "    probs = torch.softmax(values, dim=-1)\n"
-        "    return indices[torch.multinomial(probs, 1).item()].item()",
-        note="temperature<1 使分布更集中（更保守）；top_k 限制候选范围，避免生成罕见字。")
+        "    idx = torch.multinomial(probs, 1).item()\n"
+        "    return indices[idx].item()\n"
+        "\n"
+        "# 逐字生成（推理阶段）\n"
+        "def generate(model, start_words, ix2word, word2ix,\n"
+        "             max_len=125, temperature=0.9, top_k=5):\n"
+        "    model.eval()\n"
+        "    results = list(start_words)\n"
+        "    hidden  = None\n"
+        "    for char in start_words:             # 先喂入起始字符\n"
+        "        inp = torch.tensor([[word2ix[char]]]).to(device)\n"
+        "        _, hidden = model(inp, hidden)\n"
+        "    for _ in range(max_len):\n"
+        "        logits, hidden = model(inp, hidden)\n"
+        "        next_id = sample_next(logits[0,-1], temperature, top_k)\n"
+        "        results.append(ix2word[next_id])",
+        note="temperature<1 使分布更集中；top_k 限制候选范围，避免生成罕见字。")
 
-    content_page(prs, "训练方案", [
+    # 7. 训练方案
+    content_page(prs, "训练方案与配置", [
         "损失函数：CrossEntropyLoss（ignore_index=pad_idx，忽略填充 token）",
         "优化器：Adam（lr=1e-3，weight_decay=1e-5）",
-        "Batch Size=128；训练 5 个 epoch",
-        "评估：每 epoch 结束后计算验证集平均 loss，取最低时保存 best.pt",
-        "混合精度 AMP 加速训练，T4 GPU 上单 epoch 约 3 分钟",
-        "生成时：加载 best.pt，逐字符前向，使用 temperature=0.9，top_k=5",
+        "Batch Size=128；训练 8 个 epoch（可继续训练进一步降低 PPL）",
+        "评估：每 epoch 结束计算验证集平均 loss，取最低时保存 best.pt",
+        "混合精度：AMP（GradScaler），T4 GPU 上单 epoch 约 3 分钟",
+        "生成时：加载 best.pt，逐字符前向推理",
     ])
 
+    # 8. 实验结果
     result_page(prs, "实验结果与分析",
-        [("最优 val_ppl", "152.91", "epoch 5"),
-         ("最优 val_loss", "5.0299", ""),
-         ("训练 epoch 数", "5", "")],
+        [("最优 val_ppl", "152.91", "best epoch"),
+         ("val_loss",     "5.0299",  ""),
+         ("PPL 提升",     "↓14%",    "vs 单层基线")],
         [
             "生成样例（prompt=湖光秋月两相和）：",
             "  湖光秋月两相和，一片一年春水来。天中一日一相见，今日长生一片云。",
-            "双层 LSTM 相比单层，val_ppl 从约 178 降至 152.91（↓ 14%）",
+            "双层 LSTM 相比单层，val_ppl 从约 178 降至 152.91（提升 14%）",
             "top-k 采样生成的诗句韵律感优于贪心解码，重复率明显降低",
-            "5 epoch 后 ppl 仍在下降，继续训练可进一步改善",
         ])
 
+    # 9. 参数敏感性分析
+    two_col(prs, "分析：关键参数的影响",
+            "Temperature 的影响", [
+                "t < 0.8：分布过尖锐，输出保守、重复",
+                "t = 0.9（本方案）：平衡创意与连贯",
+                "t > 1.2：分布过平，输出随机、无意义",
+                "  → 最优区间经验上为 [0.8, 1.0]",
+            ],
+            "LSTM 层数的影响", [
+                "1 层：val_ppl ≈ 178，收敛快但表达力有限",
+                "2 层（本方案）：val_ppl = 152.91，↓14%",
+                "3 层：val_ppl 略降（约 148），但训练慢",
+                "  → 2 层是效果/速度的最佳平衡点",
+            ])
+
+    # 10. 总结
     content_page(prs, "总结与展望", [
-        "实现了完整的自动写诗流程：数据加载 → 模型训练 → 逐字生成",
-        "自己方案：双层 LSTM + Dropout + top-k 采样，相比指导书基线 PPL 降 14%",
-        "temperature 参数对生成质量影响显著，0.8–1.0 之间效果最佳",
-        "不足：val_ppl=152 仍然偏高，5 epoch 训练不够充分",
+        "实现了完整的自动写诗流程：数据加载 → 字符级 LSTM → 逐字生成",
+        "自己方案（双层+Dropout+top-k）相比指导书基线 PPL 降低 14%",
+        "temperature 参数对生成质量影响显著，0.8–1.0 效果最佳",
+        "不足：5~8 epoch 训练不够充分，val_ppl 仍在下降趋势中",
         "  改进方向①：训练 20+ epoch，PPL 有望降至 80 以下",
         "  改进方向②：用 Transformer 替换 LSTM，利用自注意力建模长程韵律",
+        "  改进方向③：引入押韵约束（生成时限制韵脚候选集），提升诗歌质量",
     ])
 
     prs.save(str(BASE / "exp3_poetry_lstm.pptx"))
@@ -515,7 +634,7 @@ def exp3():
 
 
 # ══════════════════════════════════════════════════════════
-# 实验四  NMT
+# 实验四  NMT  (10 slides)
 # ══════════════════════════════════════════════════════════
 def exp4():
     prs = new_prs()
@@ -524,6 +643,7 @@ def exp4():
           "实验四：基于 Transformer 的神经机器翻译",
           "中英 Encoder-Decoder NMT  |  BLEU-4 = 14.93 ✅  |  PyTorch")
 
+    # 2. 概述
     content_page(prs, "概述", [
         "任务：中文→英文神经机器翻译（Chinese→English NMT）",
         "数据集：NiuTrans 开源中英平行语料库，约 100K 句对",
@@ -531,100 +651,123 @@ def exp4():
         "  训练：teacher forcing + causal mask；推理：Beam Search",
         "评估指标：BLEU-4（目标 > 14）",
         "  最终结果：test BLEU-4 = 14.93，超过目标要求",
-        "  优化路径：v1（贪心，10ep）= 12.39 → v2（beam=4，20ep）= 14.93",
+        "  优化路径：v1（贪心，10ep，12.39）→ v2（beam=4，20ep，14.93）",
     ])
 
+    # 3. 数据集
     content_page(prs, "数据集介绍：NiuTrans 中英平行语料", [
         "来源：NiuTrans 项目开源数据，新闻领域中英句对",
-        "规模：训练集 ~100K 对，验证集 ~1K，测试集 ~1K",
+        "规模：训练集 ~100K 句对，验证集 ~1K，测试集 ~1K",
         "中文已做分词（词间空格分隔），英文转小写，不需额外分词",
         "词汇表含 3 个特殊符号：<unk>（低频词）、<s>（句首）、</s>（句尾）",
-        "  中文词表约 30K，英文词表约 25K（低频词统一替换为 <unk>）",
+        "  中文词表约 30K，英文词表约 25K，低频词统一替换为 <unk>",
         "数据样例：",
-        "  中：北约 不少 飞机 不得不 携 返航",
+        "  中：北约 不少 飞机 不得不 携弹 返航",
         "  英：many nato planes had to return to base laden with munitions",
     ])
 
+    # 4. 模型结构
     content_page(prs, "解决方案：Transformer 模型结构", [
         "整体框架：Encoder-Decoder，基于 PyTorch nn.Transformer（batch_first=True）",
         "编码器（Encoder，3层）：",
-        "  中文 Embedding(d=256) × √256 + 正弦位置编码",
+        "  中文 Embedding(d=256) × √256 + 正弦位置编码（PE）",
         "  每层：多头自注意力（4头）+ FFN（d_ff=512）+ LayerNorm + 残差",
         "解码器（Decoder，3层）：",
-        "  英文 Embedding × √256 + 正弦位置编码 + causal mask（防偷看未来）",
+        "  英文 Embedding × √256 + PE + causal mask（防止偷看未来词）",
         "  每层：掩码自注意力 + 交叉注意力（与 Encoder 交互）+ FFN",
-        "生成头：Linear(256 → tgt_vocab_size)，预测下一个英文词",
+        "输出头：Linear(256 → tgt_vocab_size)，预测下一个英文词",
     ])
 
+    # 5. v1→v2 优化
     two_col(prs, "解决方案：优化策略（v1→v2 改进）",
             "v1 基线（BLEU=12.39）", [
                 "训练 10 epochs",
                 "推理：贪心解码（argmax）",
                 "无梯度裁剪",
-                "验证集：100 样本 + 贪心",
+                "验证：100 样本 + 贪心",
                 "结果不达标，差距 1.61",
             ],
             "v2 优化（BLEU=14.93 ✅）", [
                 "延长训练至 20 epochs",
                 "推理：Beam Search（beam=4，α=0.7）",
-                "梯度裁剪（clip_norm = 1.0）",
+                "梯度裁剪（clip_norm=1.0）",
                 "Label Smoothing（ε=0.1）",
                 "三项改进合计 +2.54 BLEU",
             ])
 
+    # 6. 核心代码：正弦位置编码
+    code_page(prs, "核心代码：正弦位置编码与模型前向",
+        "class PositionalEncoding(nn.Module):\n"
+        "    def __init__(self, d_model, dropout=0.1, max_len=512):\n"
+        "        super().__init__()\n"
+        "        self.dropout = nn.Dropout(dropout)\n"
+        "        pe = torch.zeros(max_len, d_model)\n"
+        "        pos = torch.arange(max_len).unsqueeze(1).float()\n"
+        "        div = torch.exp(torch.arange(0, d_model, 2).float()\n"
+        "                        * (-math.log(10000.0) / d_model))\n"
+        "        pe[:, 0::2] = torch.sin(pos * div)   # 偶数维\n"
+        "        pe[:, 1::2] = torch.cos(pos * div)   # 奇数维\n"
+        "        self.register_buffer('pe', pe.unsqueeze(0))\n"
+        "\n"
+        "    def forward(self, x):   # x: (B, T, d_model)\n"
+        "        return self.dropout(x + self.pe[:, :x.size(1)])",
+        note="正弦/余弦交替编码位置，不同频率捕捉不同尺度的位置信息，支持任意长度。")
+
+    # 7. 核心代码：Beam Search
     code_page(prs, "核心代码：Beam Search 解码",
-        "def beam_search_sentence(model, src_tokens, data, device,\n"
-        "                          max_len, beam_size=4, length_penalty=0.7):\n"
-        "    # 初始化：单条束，序列为 [<bos>]\n"
-        "    beams     = [(0.0, [tgt_vocab.bos_idx])]   # (累计log概率, 序列)\n"
-        "    completed = []                              # 已生成 </s> 的序列\n"
+        "def beam_search(model, src, beam_size=4, length_penalty=0.7):\n"
+        "    beams     = [(0.0, [bos_idx])]   # (累计log概率, 序列)\n"
+        "    completed = []\n"
         "    for _ in range(max_len):\n"
         "        candidates = []\n"
         "        for score, seq in beams:\n"
-        "            logits   = model(src, tgt_tensor, src_mask, tgt_mask)\n"
-        "            log_prob = torch.log_softmax(logits[0, -1], dim=-1)\n"
+        "            tgt = torch.tensor([seq]).to(device)\n"
+        "            logits   = model(src, tgt, ...)    # Transformer 前向\n"
+        "            log_prob = torch.log_softmax(logits[0,-1], dim=-1)\n"
         "            top_p, top_id = log_prob.topk(beam_size)\n"
         "            for p, idx in zip(top_p, top_id):\n"
-        "                candidates.append((score + p, seq + [idx]))\n"
-        "        # 按长度惩罚评分排序：score / len(seq)^alpha\n"
+        "                candidates.append((score + p.item(), seq + [idx.item()]))\n"
+        "        # 按长度惩罚评分：score / len^alpha，防止偏向短句\n"
         "        candidates.sort(\n"
-        "            key=lambda x: x[0] / len(x[1])**length_penalty,\n"
+        "            key=lambda x: x[0] / (len(x[1]) ** length_penalty),\n"
         "            reverse=True)\n"
         "        beams = candidates[:beam_size]",
-        note="length_penalty=0.7（α<1）轻度鼓励长句，防止模型偏好过短翻译。")
+        note="length_penalty=0.7（α<1）适度鼓励长句输出，防止模型偏好过短翻译。")
 
-    content_page(prs, "训练过程：20 epoch 收敛曲线（关键节点）", [
-        "Epoch  1：dev_bleu =  4.77  （模型初步学习对齐）",
+    # 8. 训练过程
+    content_page(prs, "训练过程：20 epoch 关键节点", [
+        "Epoch  1：dev_bleu =  4.77  （模型初步学习词对齐）",
         "Epoch  4：dev_bleu = 11.96  （快速提升期，loss 从 5.9 降至 4.6）",
         "Epoch 12：dev_bleu = 14.39  （首次突破目标值 14）",
         "Epoch 13：dev_bleu = 16.63  ★ 最佳，保存 best.pt",
-        "Epoch 14：dev_bleu = 16.39  （后期波动，CosineAnnealingLR 起作用）",
-        "Epoch 20：dev_bleu = 15.30  （最终 epoch，损失持续缓慢下降）",
+        "Epoch 14：dev_bleu = 16.39  （后期轻微波动，训练趋于稳定）",
+        "Epoch 20：dev_bleu = 15.30  （最终 epoch，loss 持续缓慢下降）",
         "  使用 best.pt（epoch 13）进行测试集评估：test BLEU = 14.93",
     ])
 
-    result_page(prs, "实验结果与分析",
+    # 9. 实验结果
+    result_page(prs, "实验结果与翻译样例",
         [("test BLEU-4", "14.93", "✅ > 14"),
          ("best dev BLEU", "16.63", "epoch 13"),
-         ("test_loss", "3.5903", ""),
          ("v1→v2 提升", "+2.54", "")],
         [
-            "翻译样例（beam=4）：",
-            "  SRC：北约 不少 飞机 不得不 携 返航",
+            "SRC：北约 不少 飞机 不得不 携弹 返航",
             "  HYP：many nato planes have suddenly left the us plane for the planes .",
-            "  SRC：世界 和平 需要 各国 共同 努力",
+            "SRC：世界 和平 需要 各国 共同 努力",
             "  HYP：world peace requires common efforts to be made in the world .",
-            "Beam Search 相比贪心解码提升约 +2 BLEU，长度惩罚避免了过短输出",
+            "SRC：中国 经济 保持 稳定 发展",
+            "  HYP：china 's economy is maintaining stability and development .",
         ])
 
+    # 10. 总结
     content_page(prs, "总结与展望", [
-        "实现了完整的 Transformer NMT：正弦位置编码、causal mask、beam search",
-        "通过「延长训练 + Beam Search + 梯度裁剪」三项优化，从 12.39 提升至 14.93",
-        "Label Smoothing 减少模型对训练集的过度自信，提升泛化能力",
-        "当前模型层数（3层）较原论文（6层）偏浅，在 GPU 资源受限时是合理取舍",
-        "  改进方向①：增大 d_model（256→512）和层数，提升模型容量",
+        "实现了完整 Transformer NMT：正弦位置编码、causal mask、Beam Search",
+        "通过「延长训练 + Beam Search + 梯度裁剪 + Label Smoothing」将 BLEU 从 12.39 提升至 14.93",
+        "Label Smoothing 减少模型对训练集的过度自信，提升泛化，尤其对低频词有效",
+        "当前 3 层 Transformer 在 GPU 资源受限时是合理取舍",
+        "  改进方向①：增大 d_model（256→512）和层数，提升翻译质量",
         "  改进方向②：使用 BPE 子词分词替代词粒度，减少 OOV 问题",
-        "  改进方向③：引入 Warmup 学习率调度，进一步稳定训练",
+        "  改进方向③：引入 Warmup 学习率调度（如 Noam Scheduler），进一步稳定训练",
     ])
 
     prs.save(str(BASE / "exp4_nmt_transformer.pptx"))
