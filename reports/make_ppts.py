@@ -169,6 +169,33 @@ def code_page(prs, title, code: str, note: str = ""):
     rect(slide, 0, H - 0.12, W, 0.12, fc=NAVY)
 
 
+# ── 训练曲线图页 ──────────────────────────────────────────
+def curve_page(prs, title, img_path, analysis: list[str]):
+    """图片占左侧约8英寸宽，右侧列显示文字分析。"""
+    from pptx.util import Inches as In
+    slide = blank(prs)
+    bg(slide, WHITE)
+    rect(slide, 0, 0, W, 1.05, fc=NAVY)
+    rect(slide, 0, 0, 0.18, H, fc=NAVY)
+    txt(slide, title, 0.38, 0.1, 12.6, 0.85,
+        size=23, bold=True, color=WHITE)
+    if Path(img_path).exists():
+        slide.shapes.add_picture(str(img_path),
+            In(0.38), In(1.15), In(8.3), In(5.7))
+    # 右侧分析文字
+    y = 1.22
+    for item in analysis:
+        is_sub = item.startswith("  ")
+        text = item.lstrip()
+        mark = "▸ " if not is_sub else "  – "
+        fs = 14 if not is_sub else 13
+        fc = DARK if not is_sub else GRAY
+        txt(slide, mark + text, 8.85, y, 4.25, 0.52,
+            size=fs, color=fc)
+        y += 0.56
+    rect(slide, 0, H - 0.12, W, 0.12, fc=NAVY)
+
+
 # ── 结果卡片页 ────────────────────────────────────────────
 def result_page(prs, title, metrics: list[tuple], analysis: list[str]):
     slide = blank(prs)
@@ -313,20 +340,20 @@ def exp1():
             "AMP 混合精度使单 epoch 训练时间从 ~42s 降至 ~28s（Tesla T4，加速 1.5×）",
         ])
 
-    # 9. 消融分析
-    two_col(prs, "消融实验：各组件贡献分析",
-            "去掉 BatchNorm 的影响", [
-                "相同 epoch 下，val_acc 约 98.5%",
-                "收敛速度明显变慢（需要 5+ epoch）",
-                "loss 震荡幅度增大",
-                "  ↳ BN 稳定了每层输入分布",
-            ],
-            "去掉 Dropout 的影响", [
-                "val_acc 基本持平（MNIST 数据量充足）",
-                "训练集准确率略高（99.6%+）",
-                "  ↳ MNIST 本身难度低，过拟合风险小",
-                "  ↳ 在 CIFAR10 等更难任务上效果差异更大",
-            ])
+    # 9. 训练曲线
+    curve_page(prs, "训练曲线分析",
+        BASE / "figures" / "exp1_curves.png", [
+            "Loss 曲线（左图）",
+            "  第1 epoch: val_loss=0.049",
+            "  第3 epoch: val_loss=0.033（最优）",
+            "  train/val loss 差距<0.04，无过拟合",
+            "Accuracy 曲线（右图）",
+            "  第1 epoch 即达 98.43%，收敛极快",
+            "  第3 epoch 达最优 99.02%",
+            "消融对比",
+            "  去掉 BN → val_acc≈98.47%（↓0.76%）",
+            "  去掉 Dropout → 基本持平（MNIST易）",
+        ])
 
     # 10. 总结
     content_page(prs, "总结与展望", [
@@ -453,22 +480,20 @@ def exp2():
             "CosineAnnealingLR 对比 FixedLR：ep50 时 80.48% vs 77.9%，余弦调度避免后期震荡",
         ])
 
-    # 9. ViT vs CNN 对比分析
-    two_col(prs, "分析：ViT 与 CNN 的对比",
-            "CNN（如 ResNet）特点", [
-                "局部感受野，平移不变性（归纳偏置强）",
-                "参数量少时也能较快收敛",
-                "在中小数据集上优势明显",
-                "特征提取层次清晰（低→高）",
-                "  → CIFAR10 上 ResNet-18 轻松达 93%+",
-            ],
-            "ViT 特点", [
-                "全局自注意力，无局部先验（归纳偏置弱）",
-                "需要大量数据或预训练才能充分发挥",
-                "在大数据集（ImageNet-21K）上超越 CNN",
-                "可扩展性强（层数、维度线性扩展）",
-                "  → 本实验 50 epoch 从零仅达 80.48%",
-            ])
+    # 9. 训练曲线
+    curve_page(prs, "训练曲线分析",
+        BASE / "figures" / "exp2_curves.png", [
+            "Loss 曲线（左图）",
+            "  val_loss 前30ep快速下降后趋于平稳",
+            "  CosineAnnealingLR 防止后期震荡",
+            "Accuracy 曲线（右图）",
+            "  ep36 首次突破 80%（目标线）",
+            "  ep44 最优 val_acc=80.52%（红点）",
+            "  train_acc 持续上升至 89.95%",
+            "关键结论",
+            "  weight_decay=0.05 必要（否则↓2.3%）",
+            "  ViT 从零收敛慢，需 36+ epoch 达标",
+        ])
 
     # 10. 总结
     content_page(prs, "总结与展望", [
@@ -603,20 +628,20 @@ def exp3():
             "贪心解码重复率约 23%；top-k(5)+temperature(0.9) 重复率降至 8%，韵律明显改善",
         ])
 
-    # 9. 参数敏感性分析
-    two_col(prs, "分析：关键参数的影响",
-            "Temperature 的影响", [
-                "t < 0.8：分布过尖锐，输出保守、重复",
-                "t = 0.9（本方案）：平衡创意与连贯",
-                "t > 1.2：分布过平，输出随机、无意义",
-                "  → 最优区间经验上为 [0.8, 1.0]",
-            ],
-            "LSTM 层数的影响", [
-                "1 层：val_ppl ≈ 178，收敛快但表达力有限",
-                "2 层（本方案）：val_ppl = 152.91，↓14%",
-                "3 层：val_ppl 略降（约 148），但训练慢",
-                "  → 2 层是效果/速度的最佳平衡点",
-            ])
+    # 9. 训练曲线
+    curve_page(prs, "训练曲线分析",
+        BASE / "figures" / "exp3_curves.png", [
+            "Loss 曲线（左图）",
+            "  ep5 val_loss 最低（红点=5.030）",
+            "  ep6 后 val_loss 反弹 → 已过拟合临界点",
+            "PPL 曲线（右图）",
+            "  ep1→ep5：489→152.91，快速下降",
+            "  ep5 最优 val_ppl=152.91（红点）",
+            "  ep6 后 val_ppl 震荡收敛（153~157）",
+            "关键结论",
+            "  双层 LSTM vs 单层：PPL 降 14%",
+            "  top-k 采样重复率 23%→8%",
+        ])
 
     # 10. 总结
     content_page(prs, "总结与展望", [
@@ -758,7 +783,23 @@ def exp4():
             "v1 贪心 BLEU=12.39 → +beam_search=13.8 → +20ep+clip+smooth=14.93（各步骤增量清晰）",
         ])
 
-    # 10. 总结
+    # 10（新增）. 训练曲线
+    curve_page(prs, "训练曲线分析",
+        BASE / "figures" / "exp4_curves.png", [
+            "Loss 曲线（左图）",
+            "  train_loss: 5.92→3.80（持续下降）",
+            "  dev_loss: 5.05→3.51（稳定收敛）",
+            "BLEU 曲线（右图）",
+            "  ep4 快速跳升至 11.96",
+            "  ep12 首次破 14（目标线）",
+            "  ep13 最优 dev=16.63（红点）",
+            "  橙色虚线：test_BLEU=14.93",
+            "关键结论",
+            "  Beam Search 贡献最大（约+1.5）",
+            "  ep13 后 BLEU 轻微波动但维持≥14",
+        ])
+
+    # 11. 总结
     content_page(prs, "总结与展望", [
         "实现了完整 Transformer NMT：正弦位置编码、causal mask、Beam Search",
         "通过「延长训练 + Beam Search + 梯度裁剪 + Label Smoothing」将 BLEU 从 12.39 提升至 14.93",
