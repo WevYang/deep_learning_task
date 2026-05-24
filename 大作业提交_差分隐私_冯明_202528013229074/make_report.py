@@ -10,11 +10,21 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 import subprocess
 
+import re
+
 BASE = Path(__file__).parent
 RES  = BASE / "results"
 OUT  = BASE / "实验报告_差分隐私联邦学习_冯明_202528013229074.docx"
 
 T = 100  # 通信轮数，用于计算总体隐私预算
+
+_CJK = r'一-鿿　-〿＀-￯⺀-⻿'
+
+def clean(text: str) -> str:
+    """去掉中文与英文/数字之间的多余空格。"""
+    text = re.sub(rf'([{_CJK}])\s+([A-Za-z0-9({{])', r'\1\2', text)
+    text = re.sub(rf'([A-Za-z0-9)}}])\s+([{_CJK}])', r'\1\2', text)
+    return text
 
 def new_doc():
     doc = Document()
@@ -45,7 +55,9 @@ def heading(doc, text, lv=1):
     r.font.size = Pt(sizes[lv]); r.font.bold = True
     set_font(r, zh="黑体", en="Arial")
 
-def body(doc, text):
+def body(doc, text, _clean=True):
+    if _clean:
+        text = clean(text)
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     pf = p.paragraph_format
@@ -61,6 +73,7 @@ def code(doc, text):
     pf.left_indent = Cm(1.0); pf.first_line_indent = Pt(0)
     r = p.add_run(text)
     r.font.name = "Courier New"; r.font.size = Pt(9)
+    set_font(r, zh="宋体", en="Courier New")
     pPr = p._element.get_or_add_pPr()
     shd = OxmlElement("w:shd")
     shd.set(qn("w:val"), "clear"); shd.set(qn("w:color"), "auto")
@@ -231,9 +244,8 @@ def build_report():
         "  高斯，    ε/轮=30  → ε_total = 100 × 30  = 3000")
     body(doc,
         "简单组合定理给出的是最坏情况下的上界，实际上隐私损耗可能更小。"
-        "工程实践中通常配合矩会计（Moments Accountant）或 Rényi 差分隐私（RDP）"
-        "等更紧的分析方法来减少预算消耗、提升模型效用。"
-        "本实验作为教学验证，采用简单组合定理进行分析，结果如下表：")
+        "工程实践中通常配合矩会计（Moments Accountant）或Rényi差分隐私（RDP）"
+        "等更紧的分析方法来减少预算消耗、提升模型效用，各设置的隐私预算汇总如下表：")
     table(doc,
         ["机制", "每轮 ε", "总预算 ε_total", "噪声标准差/尺度", "隐私强度"],
         [
